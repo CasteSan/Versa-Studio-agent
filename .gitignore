@@ -1,0 +1,43 @@
+# Credenciales y secretos
+*.pem
+*.key
+*.json
+!workflow/*.json
+!package.json
+credentials/
+secrets/
+.env
+.env.*
+*.env
+
+# API Keys (por si se guardan en archivos)
+*api_key*
+*apikey*
+*secret*
+
+# n8n
+.n8n/
+n8n_data/
+
+# Node
+node_modules/
+npm-debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporal
+tmp/
+temp/
+*.tmp

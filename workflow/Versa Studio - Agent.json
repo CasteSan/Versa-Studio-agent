@@ -1,0 +1,275 @@
+{
+  "name": "Versa Studio - Agente Nico (Completo)",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "¡Hola! Soy Nico, el asistente de Versa Studio 👋 ¿En qué puedo ayudarte hoy?",
+        "options": {
+          "inputPlaceholder": "Escribe tu mensaje...",
+          "subtitle": "Agencia de Branding",
+          "title": "Versa Studio"
+        }
+      },
+      "id": "9d936e6d-c89e-4eee-a4b6-3f518242fd68",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        -16
+      ],
+      "webhookId": "versa-nico-agent"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres Nico, el asistente virtual de Versa Studio. Tu objetivo es cualificar leads y agendar llamadas de discovery con Elena Reyes.\n\n## IDENTIDAD\n- Nombre: Nico\n- Personalidad: Cercano pero profesional, entusiasta sin ser invasivo\n- Tono: Tuteas, español de España (\"vale\", \"genial\", \"fenomenal\")\n- Emojis: Con moderación (👋 al saludar, 😊 ocasionalmente)\n\n## VERSA STUDIO\n- Agencia boutique de branding en Madrid (Barrio de Salamanca)\n- Servicios: Identidad visual, posicionamiento, web (Webflow/Framer), consultoría de marca\n- Target: Startups, PYMEs\n- Proceso: Llamada discovery (30 min) → Propuesta → Cierre\n\n## FLUJO CONVERSACIONAL (natural, no robótico)\n\n1. SALUDO → Preséntate, pregunta cómo ayudar\n2. CUALIFICACIÓN → Recopilar: Nombre, Empresa, Email, Necesidad (conversacionalmente, NO formulario)\n3. CONFIRMAR INTERÉS → Resume info, pregunta si quiere agendar con Elena\n4. AGENDAR CITA → Horarios L-V: 10:00-13:30 y 16:00-17:30 (slots 30 min)\n5. CONFIRMACIÓN → Confirmar detalles, despedirse\n6. OBJECIONES → UN solo intento de resolver, luego respetar decisión\n7. DESPEDIDA → Si rechaza, despedirse cordialmente\n\n## REGLAS ESTRICTAS\n- NO presupuestos (deriva a Elena)\n- NO dudas técnicas complejas (deriva a Elena)\n- NO fines de semana\n- NO menos de 24h antelación\n- NO insistir más de UNA vez\n- Email de contacto alternativo: hola@versastudio.es\n\n## EDGE CASES\n- Otro idioma: Responder en español, indicar que servicio es en España\n- Servicio no ofrecido: Indicar qué SÍ hacéis\n- Fin de semana: Ofrecer día laborable más cercano\n- Email inválido: Pedir verificación natural\n- Quiere humano: Ofrecer hola@versastudio.es\n- Off-topic: Redirigir amablemente\n\n## TOOLS DISPONIBLES\n- get_current_datetime: Obtener fecha/hora actual Madrid\n- check_slot_availability: Verificar si un slot está libre\n- save_lead_to_database: Guardar datos del lead\n- create_appointment: Crear cita confirmada\n\nUSA los tools cuando necesites información real (fecha actual, disponibilidad). NO inventes datos.\nIMPORTANTE: SIEMPRE debes llamar a save_lead ANTES de llamar a create_appointment. El lead debe existir en la base de datos antes de crear la cita.\n\nSession ID: {{ $json.sessionId }}"
+        }
+      },
+      "id": "7826530e-e22e-4c52-9082-f2c9367dda72",
+      "name": "AI Agent Nico",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        480,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "810ab0f4-0bb3-4bef-af34-9d9702782ff8",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_current_datetime",
+        "description": "Obtiene la fecha y hora actual en zona horaria de Madrid (Europe/Madrid). Úsalo para saber qué día es hoy, validar que las citas propuestas están en el futuro, y calcular si hay al menos 24h de antelación.",
+        "jsCode": "const now = new Date();\nconst madridOptions = { timeZone: 'Europe/Madrid' };\n\nconst year = now.toLocaleString('en-CA', { ...madridOptions, year: 'numeric' });\nconst month = now.toLocaleString('en-CA', { ...madridOptions, month: '2-digit' });\nconst day = now.toLocaleString('en-CA', { ...madridOptions, day: '2-digit' });\nconst fechaIso = `${year}-${month}-${day}`;\n\nconst madridTime = now.toLocaleTimeString('es-ES', { ...madridOptions, hour: '2-digit', minute: '2-digit' });\n\nconst dayNum = new Date(now.toLocaleString('en-US', madridOptions)).getDay();\nconst dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];\n\nreturn `Fecha actual: ${fechaIso} (${dayNames[dayNum]}). Hora: ${madridTime}. Es fin de semana: ${dayNum === 0 || dayNum === 6 ? 'sí' : 'no'}.`;"
+      },
+      "id": "500c51d7-cc9b-4650-bccb-04efa6dbfd10",
+      "name": "Tool: Get Current DateTime",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [
+        992,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "name": "check_slot_availability",
+        "description": "Verifica si un slot específico de fecha y hora está disponible para agendar cita con Elena. Parámetros: fecha (formato YYYY-MM-DD), hora (formato HH:MM, ej: '11:00' o '16:30'). Devuelve si el slot está libre y alternativas si no lo está. Horarios válidos: L-V 10:00-13:00 y 16:00-17:00 (slots cada 30 min).",
+        "jsCode": "let fecha, hora;\n\n// Intentar parsear como JSON primero\ntry {\n  const parsed = JSON.parse(query);\n  fecha = parsed.fecha;\n  hora = parsed.hora;\n} catch (e) {\n  // Si no es JSON, intentar con regex\n  const fechaMatch = query.match(/fecha[=:\\s][\"']?(\\d{4}-\\d{2}-\\d{2})[\"']?/i);\n  const horaMatch = query.match(/hora[=:\\s][\"']?(\\d{1,2}:\\d{2})[\"']?/i);\n  fecha = fechaMatch ? fechaMatch[1] : null;\n  hora = horaMatch ? horaMatch[1] : null;\n}\n\nif (!fecha || !hora) {\n  return `Error: No pude extraer fecha/hora de: \"${query}\". Necesito fecha y hora.`;\n}\n\nconst [year, month, day] = fecha.split('-').map(Number);\nconst [hourNum, minuteNum] = hora.split(':').map(Number);\n\nconst requestedDate = new Date(year, month - 1, day, hourNum, minuteNum);\nconst now = new Date();\n\nconst dayOfWeek = requestedDate.getDay();\nif (dayOfWeek === 0 || dayOfWeek === 6) {\n  return `No disponible: ${fecha} es fin de semana. Solo de lunes a viernes.`;\n}\n\nif (requestedDate < now) {\n  return `No disponible: ${fecha} es fecha pasada.`;\n}\n\nconst minTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);\nif (requestedDate < minTime) {\n  return 'No disponible: Se necesitan al menos 24 horas de antelación.';\n}\n\nconst isMorningValid = (hourNum >= 10 && hourNum < 13) || (hourNum === 13 && minuteNum === 0);\nconst isAfternoonValid = (hourNum >= 16 && hourNum < 17) || (hourNum === 17 && minuteNum === 0);\n\nif (!isMorningValid && !isAfternoonValid) {\n  return `No disponible: ${hora} no es horario válido. Mañanas: 10:00-13:00. Tardes: 16:00-17:00.`;\n}\n\nreturn `DISPONIBLE: El ${fecha} a las ${hora} está libre para agendar con Elena.`;"
+      },
+      "id": "d73dfde2-cb0a-4240-827c-efa16cffe2d8",
+      "name": "Tool: Check Slot Availability",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [
+        864,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "value": "vast-zone-485801-g6",
+          "mode": "list",
+          "cachedResultName": "My Project n8n"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
+      "typeVersion": 1,
+      "position": [
+        304,
+        192
+      ],
+      "id": "6e8e286a-8db8-4595-980d-5d35d1479852",
+      "name": "Google Vertex Chat Model",
+      "credentials": {
+        "googleApi": {
+          "id": "8cpoeffFek5wLuMI",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Guarda un lead en la base de datos. Parámetros JSON: {\"nombre\": \"string\", \"empresa\": \"string\", \"email\": \"string\", \"necesidad\": \"string\"}",
+        "method": "POST",
+        "url": "https://csdivdhsqdgcahpuleur.supabase.co/rest/v1/leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"nombre\": $fromAI('nombre'), \"empresa\": $fromAI('empresa'), \"email\": $fromAI('email'), \"necesidad_principal\": $fromAI('necesidad'), \"session_id\": \"chat-session\", \"cualificado\": true } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        576,
+        336
+      ],
+      "id": "185d7b3c-348a-456d-9a6a-c1e8245086b1",
+      "name": "save_lead",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PwGHkwpjoWiLJp0H",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Crea una cita con Elena. IMPORTANTE: Solo usar DESPUÉS de haber llamado a save_lead. Parámetros: email (del lead, debe existir ya en la base de datos) y fecha_hora en formato ISO (YYYY-MM-DDTHH:MM:00+01:00). Ejemplo: email=carlos@techflow.io, fecha_hora=2026-02-03T11:00:00+01:00\n",
+        "method": "POST",
+        "url": "https://csdivdhsqdgcahpuleur.supabase.co/rest/v1/rpc/create_appointment_with_email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_email\": $fromAI('email'), \"p_fecha_hora\": $fromAI('fecha_hora') } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        768,
+        352
+      ],
+      "id": "ab62d07f-6f72-4de6-a294-eaf6dcf5f896",
+      "name": "Create Appointment",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PwGHkwpjoWiLJp0H",
+          "name": "Supabase"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Get Current DateTime": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Check Slot Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Vertex Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save_lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Nico",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "babd77b2-3fb8-4348-a866-b564d760bb90",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fedcaa394d74068da06e395b69ae6e32a2341f0f62596cfc585b72e90ec0b6ba"
+  },
+  "id": "beP6eYXyiiapk9278rgVl",
+  "tags": [
+    {
+      "name": "AI Agent",
+      "id": "3nQuTN7ZlswntRsO",
+      "updatedAt": "2026-01-29T00:34:21.418Z",
+      "createdAt": "2026-01-29T00:34:21.418Z"
+    },
+    {
+      "name": "Lead Qualification",
+      "id": "IbZt0CRSc283ZVnj",
+      "updatedAt": "2026-01-29T00:34:21.410Z",
+      "createdAt": "2026-01-29T00:34:21.410Z"
+    },
+    {
+      "name": "Versa Studio",
+      "id": "sV97LO0hfIhwFQHZ",
+      "updatedAt": "2026-01-29T00:34:21.423Z",
+      "createdAt": "2026-01-29T00:34:21.423Z"
+    }
+  ]
+}
