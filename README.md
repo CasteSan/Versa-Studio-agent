@@ -32,7 +32,7 @@ Este proyecto demuestra cómo construir un **agente de IA funcional** que:
 
 ## 🎥 Demo
 
-https://github.com/user-attachments/assets/[TU-VIDEO-ID]
+![Conversación completa con el agente](docs/assets/demo-preview.gif)
 
 *Conversación completa: cualificación → agendamiento → confirmación*
 
@@ -293,9 +293,9 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ## 👤 Autor
 
-**Raúl** - [GitHub](https://github.com/tu-usuario) | [LinkedIn](https://linkedin.com/in/tu-perfil)
+**Raúl Castellanos Sánchez** - [GitHub](https://github.com/CasteSan) | [LinkedIn](https://linkedin.com/in/rcastesan)
 
-*Proyecto desarrollado como prueba técnica para demostrar habilidades en n8n, AI Agents y arquitectura de software.*
+*Proyecto de demostración de n8n, agentes de IA con herramientas y arquitectura de software.*
 
 ---
 
